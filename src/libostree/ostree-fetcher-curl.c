@@ -961,6 +961,15 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
   rc = curl_easy_setopt (req->easy, CURLOPT_PROGRESSDATA, task);
   g_assert_cmpint (rc, ==, CURLM_OK);
 
+  /* set a request timeout, make sure it's not 0, otherwise an overall ostree pull session might hang */
+  long curl_timeout = 0L;
+  const char* curl_timeout_str = g_getenv ("OSTREE_CURL_TIMEOUT");
+  if (curl_timeout_str != NULL)
+    curl_timeout = atoi(curl_timeout_str);
+  if (curl_timeout == 0)
+    curl_timeout = 780L;
+  curl_easy_setopt (req->easy, CURLOPT_TIMEOUT, curl_timeout);
+
   CURLMcode multi_rc = curl_multi_add_handle (self->multi, req->easy);
   g_assert (multi_rc == CURLM_OK);
 }

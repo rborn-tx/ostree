@@ -98,6 +98,40 @@ append_system_uenv (OstreeBootloaderUboot *self, const char *bootargs, GPtrArray
   return TRUE;
 }
 
+struct uboot_config_get_params
+{
+  const char *key; /* in */
+  const char *val; /* out */
+};
+
+static gboolean
+uboot_config_get_helper (const char *line, void *data, GError **error)
+{
+  struct uboot_config_get_params *params = data;
+  g_auto(GStrv) vars = g_strsplit(line, "=", -1);
+  if (!g_strcmp0 (vars[0], params->key))
+    {
+      params->val = g_strdup (vars[1]);
+      return 0;
+    }
+  return 1;
+}
+
+/* The caller becomes the owner of the returned pointer. */
+static const char *
+uboot_config_get (const char *key, GCancellable *cancellable, GError **error)
+{
+  const char *cfgfile = "/usr/lib/ostree-boot/uEnv.txt";
+  struct uboot_config_get_params params = { .key = key, .val = NULL };
+
+  if (!g_file_test (cfgfile, G_FILE_TEST_EXISTS))
+    return NULL;
+
+  ot_parse_file_by_line (cfgfile, uboot_config_get_helper, &params, cancellable, error);
+
+  return params.val;
+}
+
 static gboolean
 create_config_from_boot_loader_entries (OstreeBootloaderUboot *self, int bootversion,
                                         GPtrArray *new_lines, GCancellable *cancellable,
@@ -140,6 +174,16 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot *self, int bootver
       val = ostree_bootconfig_parser_get (config, "fdtdir");
       if (val)
         g_ptr_array_add (new_lines, g_strdup_printf ("fdtdir%s=/boot%s", index_suffix, val));
+
+      if (i)
+        {
+          val = uboot_config_get ("fdtfile", cancellable, error);
+          if (val)
+            {
+              g_ptr_array_add (new_lines, g_strdup_printf ("fdtfile%s=%s", index_suffix, val));
+              g_free (val);
+            }
+        }
 
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)

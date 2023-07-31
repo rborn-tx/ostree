@@ -236,8 +236,14 @@ _ostree_fetcher_init (OstreeFetcher *self)
   curl_multi_setopt (self->multi, CURLMOPT_TIMERFUNCTION, update_timeout_cb);
   curl_multi_setopt (self->multi, CURLMOPT_TIMERDATA, self);
 #if CURL_AT_LEAST_VERSION(7, 30, 0)
+  long curlm_max_total_conn = 0L;
+  const char* curlm_max_total_conn_str = g_getenv ("OSTREE_CURLM_MAX_TOTAL_CONN");
+  if (curlm_max_total_conn_str != NULL)
+    curlm_max_total_conn = atoi(curlm_max_total_conn_str);
   /* Let's do something reasonable here. */
-  curl_multi_setopt (self->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, 8);
+  if (curlm_max_total_conn == 0)
+      curlm_max_total_conn = 8;
+  curl_multi_setopt (self->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, curlm_max_total_conn);
 #endif
   /* This version mirrors the version at which we're enabling HTTP2 support.
    * See also https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c

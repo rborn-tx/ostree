@@ -193,6 +193,17 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot *self, int bootver
             if (!append_system_uenv (self, val, new_lines, cancellable, error))
               return FALSE;
         }
+
+      if (i)
+        {
+          val = uboot_config_get ("kernel_image_type", cancellable, error);
+          if (val)
+            {
+              g_ptr_array_add (new_lines,
+                               g_strdup_printf ("kernel_image_type%s=%s", index_suffix, val));
+              g_free (val);
+            }
+        }
     }
 
   return TRUE;

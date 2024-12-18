@@ -153,6 +153,8 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_re
     {
       if (supported)
         *supported = FALSE;
+      g_debug ("_ostree_tmpf_fsverity_core: return immediately; P=%s; R=%d",
+               tmpf->path, (int)fsverity_requested);
       return TRUE;
     }
 
@@ -161,6 +163,9 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_re
   /* fs-verity requires a read-only file descriptor */
   if (!glnx_tmpfile_reopen_rdonly (tmpf, error))
     return FALSE;
+
+  g_debug ("_ostree_tmpf_fsverity_core: call _ostree_fsverity_enable(%s); R=%d",
+           tmpf->path, (int)fsverity_requested);
 
   if (!_ostree_fsverity_enable (tmpf->fd, FALSE, supported, signature, error))
     return FALSE;
@@ -242,6 +247,9 @@ _ostree_ensure_fsverity (OstreeRepo *self, gboolean allow_enoent, int dirfd, con
   glnx_autofd int fd = openat (dirfd, path, O_CLOEXEC | O_RDONLY);
   if (fd < 0)
     return glnx_throw_errno_prefix (error, "openat(%s)", path);
+
+  g_debug ("_ostree_ensure_fsverity: call _ostree_fsverity_enable(%s); W=%d, S=%d",
+           path, (int)self->fs_verity_wanted, (int)self->fs_verity_supported);
 
   if (!_ostree_fsverity_enable (fd, TRUE, supported, NULL, error))
     return FALSE;
